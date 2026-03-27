@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>CCTV Map Pro</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<style>
+  body { margin:0; }
+  #map { height: 100vh; }
+
+  #thaiTime {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    background: rgba(0,0,0,0.7);
+    color: #00ffcc;
+    padding: 10px 20px;
+    font-size: 22px;
+    font-weight: bold;
+    border-radius: 10px;
+    font-family: monospace;
+    box-shadow: 0 0 10px #00ffcc;
+  }
+
+  .popup iframe {
+    width: 640px;
+    height: 360px;
+    border: none;
+    border-radius: 8px;
+  }
+
+  .popup-title {
+    font-weight: bold;
+    margin-bottom: 5px;
+  }
+</style>
+</head>
+<body>
+
+<div id="thaiTime"></div>
+<div id="map"></div>
+
+<script>
+
+// 🕒 เวลาไทย
+function updateThaiTime() {
+  const now = new Date();
+  const options = {
+    timeZone: "Asia/Bangkok",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  };
+  document.getElementById("thaiTime").innerText =
+    new Intl.DateTimeFormat("th-TH", options).format(now);
+}
+setInterval(updateThaiTime, 1000);
+updateThaiTime();
+
+// 🗺️ Map
+const map = L.map('map').setView([10.403240, 98.777100], 11);
+
+// 🌍 Layers
+const googleHybrid = L.tileLayer(
+  'https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+  { subdomains:['mt0','mt1','mt2','mt3'], maxZoom: 20 }
+).addTo(map);
+
+const googleStreet = L.tileLayer(
+  'https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
+  { subdomains:['mt0','mt1','mt2','mt3'], maxZoom: 20 }
+);
+
+// ✅ OpenTopoMap
+const topo = L.tileLayer(
+  'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+  {
+    maxZoom: 17,
+    attribution: '&copy; OpenTopoMap'
+  }
+);
+
+L.control.layers({
+  "Google Hybrid": googleHybrid,
+  "Google Street": googleStreet,
+  "OpenTopoMap": topo
+}).addTo(map);
+
+// 📷 ไอคอนใหม่
+const cctvIcon = L.icon({
+  iconUrl: 'https://i.ibb.co/1hX5YCQ/cctv-1.png',
+  iconSize: [50, 50],
+  iconAnchor: [25, 50],
+  popupAnchor: [0, -45]
+});
+
+// 📡 Cameras
+const cameras = [
+  { name:"RNG01 - บ้านปากจั่น", lat:10.533170, lon:98.823570, station:"RNG01" },
+  { name:"RNG02 - บ้านปลายคลอง", lat:10.403240, lon:98.777100, station:"RNG02" },
+  { name:"RNG03 - บ้านลำเลียง", lat:10.306850, lon:98.854310, station:"RNG03" },
+  { name:"RNG04 - บ้านสองแพรก", lat:10.264550, lon:98.828420, station:"RNG04" },
+  { name:"RNG05 - สะพานลำเลียง", lat:10.311060, lon:98.795300, station:"RNG05" }
+];
+
+// 🎥 Marker
+cameras.forEach(cam => {
+  const popupContent = `
+    <div class="popup">
+      <div class="popup-title">${cam.name}</div>
+      <iframe src="https://cctv.disaster.go.th/stations/${cam.station}"></iframe>
+    </div>
+  `;
+
+  L.marker([cam.lat, cam.lon], { icon: cctvIcon })
+    .addTo(map)
+    .bindPopup(popupContent, {
+      maxWidth: 700,
+      minWidth: 650
+    });
+});
+
+</script>
+
+</body>
+</html>
