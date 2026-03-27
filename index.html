@@ -1,135 +1,809 @@
 <!DOCTYPE html>
-<html>
+<html lang="th">
 <head>
 <meta charset="UTF-8">
-<title>CCTV Map Pro</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>CCTV Map Pro | ระบบกล้องวงจรปิดและพยากรณ์อากาศ</title>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<!-- Leaflet CSS & JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <style>
-  body { margin:0; }
-  #map { height: 100vh; }
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
 
-  #thaiTime {
+  body {
+    font-family: 'Inter', system-ui, 'Segoe UI', 'Prompt', sans-serif;
+    background: #0b0f1a;
+    overflow: hidden;
+  }
+
+  #map {
+    height: 100vh;
+    width: 100%;
+    z-index: 1;
+  }
+
+  /* ========== TOP BAR (Modern Glass) ========== */
+  .top-bar {
     position: absolute;
-    top: 10px;
+    top: 16px;
+    left: 20px;
+    z-index: 10000;
+    display: flex;
+    gap: 10px;
+    pointer-events: none;
+  }
+
+  .time-card, .weather-btn {
+    pointer-events: auto;
+    background: rgba(12, 20, 28, 0.85);
+    backdrop-filter: blur(12px);
+    border-radius: 48px;
+    padding: 10px 22px;
+    font-weight: 600;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 255, 200, 0.2);
+    transition: all 0.2s ease;
+    letter-spacing: 0.3px;
+  }
+
+  .time-card {
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 1rem;
+    color: #bbf0e6;
+    background: rgba(0, 0, 0, 0.7);
+    border: 1px solid rgba(80, 220, 200, 0.5);
+  }
+
+  .weather-btn {
+    background: rgba(0, 20, 25, 0.85);
+    color: #ffe6b3;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.95rem;
+    border: 1px solid rgba(255, 200, 100, 0.6);
+    backdrop-filter: blur(12px);
+  }
+
+  .weather-btn:hover {
+    transform: scale(1.02);
+    background: #0a2a2c;
+    border-color: #ffcc66;
+    box-shadow: 0 0 16px rgba(255, 200, 100, 0.4);
+  }
+
+  /* ========== SIDEBAR (Collapsible Modern) ========== */
+  .cctv-sidebar {
+    position: absolute;
+    top: 88px;
+    left: 18px;
+    z-index: 5000;
+    background: rgba(8, 14, 22, 0.85);
+    backdrop-filter: blur(16px);
+    border-radius: 28px;
+    border: 1px solid rgba(64, 224, 208, 0.35);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+    transition: width 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1), padding 0.2s;
+    overflow: hidden;
+    width: 300px;
+    max-height: calc(100vh - 120px);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .cctv-sidebar.collapsed {
+    width: 68px;
+  }
+
+  /* Sidebar Inner */
+  .sidebar-expanded {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    transition: opacity 0.2s;
+  }
+
+  .sidebar-collapsed {
+    display: none;
+    width: 100%;
+    justify-content: center;
+    align-items: center;
+    padding: 18px 0;
+  }
+
+  .cctv-sidebar.collapsed .sidebar-expanded {
+    display: none;
+  }
+
+  .cctv-sidebar.collapsed .sidebar-collapsed {
+    display: flex;
+  }
+
+  /* Header area */
+  .sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 20px 12px 20px;
+    border-bottom: 1px solid rgba(100, 220, 200, 0.3);
+  }
+
+  .sidebar-header h3 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    background: linear-gradient(135deg, #c0f0ff, #a0ffcc);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    letter-spacing: -0.2px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .toggle-sidebar-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    width: 34px;
+    height: 34px;
+    border-radius: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #c0ffec;
+    font-size: 1.4rem;
+    transition: 0.2s;
+    backdrop-filter: blur(4px);
+  }
+
+  .toggle-sidebar-btn:hover {
+    background: rgba(0, 200, 180, 0.5);
+    color: white;
+    transform: scale(0.96);
+  }
+
+  /* Camera list */
+  .camera-list-container {
+    overflow-y: auto;
+    padding: 8px 8px 20px 8px;
+    flex: 1;
+    scrollbar-width: thin;
+    scrollbar-color: #2baea0 #1e2a2a;
+  }
+
+  .camera-list-container::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .camera-list-container::-webkit-scrollbar-track {
+    background: #1a2626;
+    border-radius: 10px;
+  }
+
+  .camera-list-container::-webkit-scrollbar-thumb {
+    background: #3fcfc0;
+    border-radius: 10px;
+  }
+
+  .camera-item {
+    background: rgba(20, 30, 38, 0.6);
+    margin: 10px 8px;
+    padding: 12px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid rgba(80, 180, 170, 0.2);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .camera-item:hover {
+    background: rgba(40, 70, 75, 0.8);
+    transform: translateX(5px);
+    border-color: #3cdbc8;
+    box-shadow: 0 5px 12px rgba(0,0,0,0.3);
+  }
+
+  .camera-item.active {
+    background: linear-gradient(105deg, #1f4e4b, #0f3835);
+    border-left: 4px solid #3effe0;
+    box-shadow: 0 2px 12px rgba(0,255,200,0.2);
+  }
+
+  .cam-icon {
+    font-size: 28px;
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));
+  }
+
+  .cam-info {
+    flex: 1;
+  }
+
+  .cam-name {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #eef5ff;
+    letter-spacing: -0.2px;
+    margin-bottom: 4px;
+  }
+
+  .cam-coord {
+    font-size: 0.7rem;
+    color: #aacfd9;
+    font-family: monospace;
+    opacity: 0.8;
+  }
+
+  /* collapsed view style */
+  .expand-trigger {
+    background: rgba(20, 40, 45, 0.9);
+    width: 48px;
+    height: 48px;
+    border-radius: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 28px;
+    color: #8effe0;
+    border: 1px solid #2acfba;
+    transition: 0.2s;
+  }
+
+  .expand-trigger:hover {
+    background: #1b6b62;
+    transform: scale(1.02);
+  }
+
+  /* Weather Panel (same but modern glow) */
+  .weather-panel {
+    position: absolute;
+    top: 100px;
     left: 50%;
     transform: translateX(-50%);
-    z-index: 9999;
-    background: rgba(0,0,0,0.7);
-    color: #00ffcc;
-    padding: 10px 20px;
-    font-size: 22px;
-    font-weight: bold;
-    border-radius: 10px;
-    font-family: monospace;
-    box-shadow: 0 0 10px #00ffcc;
+    width: 90%;
+    max-width: 880px;
+    background: rgba(12, 20, 30, 0.96);
+    backdrop-filter: blur(20px);
+    border-radius: 32px;
+    box-shadow: 0 25px 45px rgba(0,0,0,0.6), 0 0 0 1px rgba(0, 255, 200, 0.3);
+    z-index: 11000;
+    padding: 20px 22px;
+    display: none;
+    transition: all 0.25s;
   }
 
-  .popup iframe {
-    width: 640px;
-    height: 360px;
+  .weather-panel.show {
+    display: block;
+    animation: fadeSlideDown 0.3s ease-out;
+  }
+
+  @keyframes fadeSlideDown {
+    from {
+      opacity: 0;
+      transform: translateX(-50%) translateY(-24px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  }
+
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+    color: #eef4ff;
+    border-bottom: 1px dashed #3fe0c0;
+    padding-bottom: 12px;
+  }
+
+  .panel-header h3 {
+    margin: 0;
+    font-size: 1.35rem;
+    font-weight: 600;
+    background: linear-gradient(120deg, #fff3cf, #a5ffea);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+  }
+
+  .close-panel {
+    background: rgba(255,100,100,0.2);
     border: none;
-    border-radius: 8px;
+    color: #ffbcbc;
+    font-size: 1.4rem;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 40px;
+    width: 34px;
+    height: 34px;
+    transition: 0.2s;
   }
 
-  .popup-title {
-    font-weight: bold;
-    margin-bottom: 5px;
+  .close-panel:hover {
+    background: #ff5e5e;
+    color: white;
+    transform: scale(1.05);
+  }
+
+  .weather-content {
+    background: #051016;
+    border-radius: 24px;
+    padding: 10px;
+    text-align: center;
+    overflow-x: auto;
+  }
+
+  .weather-content img {
+    max-width: 100%;
+    border-radius: 20px;
+    box-shadow: 0 6px 14px rgba(0,0,0,0.4);
+  }
+
+  .weather-loading {
+    color: #ccddff;
+    padding: 30px;
+  }
+
+  /* Leaflet controls reposition */
+  .leaflet-control-zoom {
+    border: none !important;
+    box-shadow: 0 5px 12px rgba(0,0,0,0.3) !important;
+  }
+
+  .leaflet-control-zoom a {
+    background: #0f1a1f !important;
+    color: #bbffec !important;
+    border-color: #2f8f80 !important;
+  }
+
+  /* Responsive */
+  @media (max-width: 720px) {
+    .cctv-sidebar {
+      width: 260px;
+      top: 78px;
+      left: 10px;
+    }
+    .cctv-sidebar.collapsed {
+      width: 56px;
+    }
+    .top-bar {
+      right: 12px;
+      top: 12px;
+      gap: 8px;
+    }
+    .time-card, .weather-btn {
+      padding: 6px 14px;
+      font-size: 0.75rem;
+    }
+    .cam-name {
+      font-size: 0.8rem;
+    }
+    .weather-panel {
+      top: 88px;
+      width: 95%;
+      padding: 14px;
+    }
+  }
+
+  /* Custom popup iframe */
+  .popup iframe {
+    width: 600px;
+    height: 340px;
+    border-radius: 16px;
+    border: none;
+    box-shadow: 0 0 12px rgba(0,0,0,0.3);
+  }
+
+  @media (max-width: 760px) {
+    .popup iframe {
+      width: 100%;
+      height: 200px;
+    }
+    .leaflet-popup-content {
+      min-width: 260px !important;
+    }
+  }
+
+  .leaflet-popup-content-wrapper {
+    background: #11181fdd;
+    backdrop-filter: blur(12px);
+    border-radius: 24px;
+    border: 1px solid #2affcf;
+    color: white;
   }
 </style>
 </head>
 <body>
 
-<div id="thaiTime"></div>
+<!-- Top right time + weather -->
+<div class="top-bar">
+  <div id="thaiTime" class="time-card"></div>
+  <div id="weatherToggleBtn" class="weather-btn">
+    🌤️ พยากรณ์อากาศ
+  </div>
+</div>
+
+<!-- COLLAPSIBLE CCTV SIDEBAR -->
+<div id="cctvSidebar" class="cctv-sidebar">
+  <!-- Expanded content -->
+  <div class="sidebar-expanded">
+    <div class="sidebar-header">
+      <h3>
+        <span>📹</span> กล้อง+ระดับน้ำ
+      </h3>
+      <button id="collapseSidebarBtn" class="toggle-sidebar-btn" title="ย่อเมนู">◀</button>
+    </div>
+    <div class="camera-list-container" id="cameraListContainer">
+      <!-- dynamic camera list will be injected -->
+      <div style="padding: 16px; text-align:center; color:#9bb5c2;">กำลังโหลดรายชื่อ...</div>
+    </div>
+  </div>
+  <!-- Collapsed content (only expand button) -->
+  <div class="sidebar-collapsed">
+    <div id="expandSidebarBtn" class="expand-trigger" title="ขยายเมนูกล้อง">
+      🎥
+    </div>
+  </div>
+</div>
+
+<!-- Weather Panel -->
+<div id="weatherPanel" class="weather-panel">
+  <div class="panel-header">
+    <h3>🌦️ พยากรณ์อากาศ 48 ชั่วโมง อ.กระบุรี </h3>
+    <button id="closeWeatherPanel" class="close-panel">✕</button>
+  </div>
+  <div id="weatherContent" class="weather-content">
+    <div class="weather-loading">📡 กำลังโหลดข้อมูลพยากรณ์อากาศ...</div>
+  </div>
+</div>
+
 <div id="map"></div>
 
 <script>
+  // ======================= GLOBALS =======================
+  let map;
+  let cameraMarkers = [];       // store marker objects
+  let cameraData = [];          // store raw data + marker reference
+  let activeListItem = null;
 
-// 🕒 เวลาไทย
-function updateThaiTime() {
-  const now = new Date();
-  const options = {
-    timeZone: "Asia/Bangkok",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    weekday: "long",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit"
-  };
-  document.getElementById("thaiTime").innerText =
-    new Intl.DateTimeFormat("th-TH", options).format(now);
-}
-setInterval(updateThaiTime, 1000);
-updateThaiTime();
-
-// 🗺️ Map
-const map = L.map('map').setView([10.403240, 98.777100], 11);
-
-// 🌍 Layers
-const googleHybrid = L.tileLayer(
-  'https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
-  { subdomains:['mt0','mt1','mt2','mt3'], maxZoom: 20 }
-).addTo(map);
-
-const googleStreet = L.tileLayer(
-  'https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
-  { subdomains:['mt0','mt1','mt2','mt3'], maxZoom: 20 }
-);
-
-// ✅ OpenTopoMap
-const topo = L.tileLayer(
-  'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-  {
-    maxZoom: 17,
-    attribution: '&copy; OpenTopoMap'
+  // ======================= TIME (THAI) =======================
+  function updateThaiTime() {
+    const now = new Date();
+    const options = {
+      timeZone: "Asia/Bangkok",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      weekday: "long",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit"
+    };
+    const timeStr = new Intl.DateTimeFormat("th-TH", options).format(now);
+    document.getElementById("thaiTime").innerText = timeStr;
   }
-);
+  setInterval(updateThaiTime, 1000);
+  updateThaiTime();
 
-L.control.layers({
-  "Google Hybrid": googleHybrid,
-  "Google Street": googleStreet,
-  "OpenTopoMap": topo
-}).addTo(map);
+  // ======================= INIT MAP =======================
+  map = L.map('map').setView([10.403240, 98.777100], 12);
 
-// 📷 ไอคอนใหม่
-const cctvIcon = L.icon({
-  iconUrl: 'https://i.ibb.co/1hX5YCQ/cctv-1.png',
-  iconSize: [50, 50],
-  iconAnchor: [25, 50],
-  popupAnchor: [0, -45]
-});
+  // Base layers
+  const googleHybrid = L.tileLayer(
+    'https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+    { subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], maxZoom: 20 }
+  ).addTo(map);
 
-// 📡 Cameras
-const cameras = [
-  { name:"RNG01 - บ้านปากจั่น", lat:10.533170, lon:98.823570, station:"RNG01" },
-  { name:"RNG02 - บ้านปลายคลอง", lat:10.403240, lon:98.777100, station:"RNG02" },
-  { name:"RNG03 - บ้านลำเลียง", lat:10.306850, lon:98.854310, station:"RNG03" },
-  { name:"RNG04 - บ้านสองแพรก", lat:10.264550, lon:98.828420, station:"RNG04" },
-  { name:"RNG05 - สะพานลำเลียง", lat:10.311060, lon:98.795300, station:"RNG05" }
-];
+  const googleStreet = L.tileLayer(
+    'https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
+    { subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], maxZoom: 20 }
+  );
 
-// 🎥 Marker
-cameras.forEach(cam => {
-  const popupContent = `
-    <div class="popup">
-      <div class="popup-title">${cam.name}</div>
-      <iframe src="https://cctv.disaster.go.th/stations/${cam.station}"></iframe>
-    </div>
-  `;
+  const topo = L.tileLayer(
+    'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+    { maxZoom: 17, attribution: '&copy; OpenTopoMap' }
+  );
 
-  L.marker([cam.lat, cam.lon], { icon: cctvIcon })
-    .addTo(map)
-    .bindPopup(popupContent, {
-      maxWidth: 700,
-      minWidth: 650
+  // Move zoom control to bottom right to avoid sidebar
+  map.zoomControl.setPosition('bottomright');
+  L.control.layers({
+    "Google Hybrid": googleHybrid,
+    "Google Street": googleStreet,
+    "OpenTopoMap": topo
+  }).addTo(map);
+
+  // CCTV Icon (same as before)
+  const cctvIcon = L.icon({
+    iconUrl: 'https://i.ibb.co/1hX5YCQ/cctv-1.png',
+    iconSize: [46, 46],
+    iconAnchor: [23, 46],
+    popupAnchor: [0, -40]
+  });
+
+  // Camera dataset
+  const camerasRaw = [
+    { name: "RNG01 - บ้านปากจั่น", lat: 10.533170, lon: 98.823570, station: "RNG01" },
+    { name: "RNG02 - บ้านปลายคลอง", lat: 10.403240, lon: 98.777100, station: "RNG02" },
+    { name: "RNG03 - บ้านลำเลียง", lat: 10.306850, lon: 98.854310, station: "RNG03" },
+    { name: "RNG04 - บ้านสองแพรก", lat: 10.264550, lon: 98.828420, station: "RNG04" },
+    { name: "RNG05 - สะพานลำเลียง", lat: 10.311060, lon: 98.795300, station: "RNG05" }
+  ];
+
+  // ======================= ADD MARKERS & STORE =======================
+  function initMarkers() {
+    camerasRaw.forEach((cam, idx) => {
+      const popupContent = `
+        <div class="popup">
+          <div style="font-weight:bold; margin-bottom:8px; font-size:1rem;">📹 ${cam.name}</div>
+          <iframe src="https://cctv.disaster.go.th/stations/${cam.station}" title="CCTV ${cam.station}" allowfullscreen></iframe>
+          <small style="display:block; margin-top:8px; opacity:0.8;">🔴 ถ่ายทอดสด ระบบเตือนภัยพิบัติ</small>
+        </div>
+      `;
+      const marker = L.marker([cam.lat, cam.lon], { icon: cctvIcon }).addTo(map);
+      marker.bindPopup(popupContent, { maxWidth: 680, minWidth: 300 });
+      
+      // store reference
+      cameraMarkers.push(marker);
+      cameraData.push({
+        id: idx,
+        name: cam.name,
+        lat: cam.lat,
+        lon: cam.lon,
+        station: cam.station,
+        marker: marker
+      });
+      
+      // optional: when popup opens, we could sync sidebar highlight (nice UX)
+      marker.on('popupopen', () => {
+        highlightSidebarItemByIdx(idx);
+      });
     });
-});
+  }
 
+  // ======================= BUILD SIDEBAR LIST =======================
+  function buildCameraList() {
+    const container = document.getElementById('cameraListContainer');
+    if (!container) return;
+    
+    if (cameraData.length === 0) {
+      container.innerHTML = '<div style="padding:20px; text-align:center;">ไม่มีข้อมูลกล้อง</div>';
+      return;
+    }
+    
+    let html = '';
+    cameraData.forEach((cam, index) => {
+      const latFixed = cam.lat.toFixed(5);
+      const lngFixed = cam.lon.toFixed(5);
+      html += `
+        <div class="camera-item" data-idx="${index}" data-lat="${cam.lat}" data-lon="${cam.lon}">
+          <div class="cam-icon">📷</div>
+          <div class="cam-info">
+            <div class="cam-name">${escapeHtml(cam.name)}</div>
+            <div class="cam-coord">📍 ${latFixed}, ${lngFixed}</div>
+          </div>
+        </div>
+      `;
+    });
+    container.innerHTML = html;
+    
+    // attach click event to each item
+    const items = document.querySelectorAll('.camera-item');
+    items.forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = parseInt(item.getAttribute('data-idx'), 10);
+        if (!isNaN(idx) && cameraData[idx]) {
+          flyToCamera(idx);
+        }
+      });
+    });
+  }
+  
+  // Helper: escape html to avoid injection
+  function escapeHtml(str) {
+    return str.replace(/[&<>]/g, function(m) {
+      if (m === '&') return '&amp;';
+      if (m === '<') return '&lt;';
+      if (m === '>') return '&gt;';
+      return m;
+    });
+  }
+  
+  // Fly to camera and open popup
+  function flyToCamera(index) {
+    if (!cameraData[index]) return;
+    const cam = cameraData[index];
+    // Fly to with appropriate zoom (zoom 15 for detailed view)
+    map.flyTo([cam.lat, cam.lon], 15, {
+      duration: 1.2,
+      easeLinearity: 0.5
+    });
+    // Open popup of the marker
+    if (cam.marker) {
+      cam.marker.openPopup();
+    }
+    highlightSidebarItemByIdx(index);
+  }
+  
+  // Highlight active camera in sidebar
+  function highlightSidebarItemByIdx(index) {
+    // remove all active class
+    const allItems = document.querySelectorAll('.camera-item');
+    allItems.forEach(item => item.classList.remove('active'));
+    if (allItems[index]) {
+      allItems[index].classList.add('active');
+      // optional: scroll into view
+      allItems[index].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+  
+  // ======================= SIDEBAR COLLAPSE LOGIC =======================
+  const sidebar = document.getElementById('cctvSidebar');
+  const collapseBtn = document.getElementById('collapseSidebarBtn');
+  const expandBtn = document.getElementById('expandSidebarBtn');
+  
+  function collapseSidebar() {
+    if (!sidebar) return;
+    sidebar.classList.add('collapsed');
+    localStorage.setItem('cctvSidebarCollapsed', 'true');
+  }
+  
+  function expandSidebar() {
+    if (!sidebar) return;
+    sidebar.classList.remove('collapsed');
+    localStorage.setItem('cctvSidebarCollapsed', 'false');
+  }
+  
+  if (collapseBtn) {
+    collapseBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      collapseSidebar();
+    });
+  }
+  if (expandBtn) {
+    expandBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      expandSidebar();
+    });
+  }
+  
+  // Restore state from localStorage
+  const savedState = localStorage.getItem('cctvSidebarCollapsed');
+  if (savedState === 'true') {
+    collapseSidebar();
+  } else {
+    expandSidebar(); // default expanded
+  }
+  
+  // ======================= WEATHER FORECAST (Meteogram) =======================
+  const weatherPanel = document.getElementById('weatherPanel');
+  const weatherBtn = document.getElementById('weatherToggleBtn');
+  const closeWeather = document.getElementById('closeWeatherPanel');
+  
+  function getWeatherSVGUrl() {
+    const base = "https://www.yr.no/en/content/2-1152625/meteogram.svg";
+    const fresh = Date.now();
+    return `${base}?mode=dark&t=${fresh}`;
+  }
+  
+  function loadWeatherForecast() {
+    const weatherContainer = document.getElementById('weatherContent');
+    if (!weatherContainer) return;
+    weatherContainer.innerHTML = '<div class="weather-loading">🌐 กำลังโหลดแผนที่อากาศจาก yr.no ...</div>';
+    
+    const img = new Image();
+    const svgUrl = getWeatherSVGUrl();
+    
+    img.onload = () => {
+      weatherContainer.innerHTML = '';
+      const imgElement = document.createElement('img');
+      imgElement.src = svgUrl;
+      imgElement.alt = "พยากรณ์อากาศ Meteogram กระบุรี";
+      imgElement.style.width = "100%";
+      imgElement.style.borderRadius = "20px";
+      weatherContainer.appendChild(imgElement);
+      
+      const credit = document.createElement('div');
+      credit.style.fontSize = "18px";
+      credit.style.marginTop = "14px";
+      credit.style.textAlign = "center";
+      credit.style.color = "#0cf21f";
+      credit.innerHTML = "* สถาบันอุตุนิยมวิทยานอร์เวย์ (MET Norway)ดึงข้อมูลจากแบบจำลอง ECMWF *";
+      weatherContainer.appendChild(credit);
+    };
+    
+    img.onerror = () => {
+      weatherContainer.innerHTML = `
+        <div style="color:#ffbc88; padding:25px; text-align:center;">
+          ⚠️ ไม่สามารถโหลดข้อมูลพยากรณ์อากาศ<br>
+          <button id="retryWeatherBtn" style="margin-top:16px; background:#2fbfa5; border:none; border-radius:40px; padding:8px 24px; color:white; cursor:pointer;">🔄 ลองใหม่</button>
+        </div>
+      `;
+      const retry = document.getElementById('retryWeatherBtn');
+      if (retry) retry.addEventListener('click', () => loadWeatherForecast());
+    };
+    img.src = svgUrl;
+  }
+  
+  function openWeatherPanel() {
+    weatherPanel.classList.add('show');
+    loadWeatherForecast();
+  }
+  
+  function closeWeatherPanelFn() {
+    weatherPanel.classList.remove('show');
+  }
+  
+  if (weatherBtn) {
+    weatherBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (weatherPanel.classList.contains('show')) {
+        closeWeatherPanelFn();
+      } else {
+        openWeatherPanel();
+      }
+    });
+  }
+  if (closeWeather) {
+    closeWeather.addEventListener('click', () => closeWeatherPanelFn());
+  }
+  
+  // close weather on Escape
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && weatherPanel.classList.contains('show')) {
+      closeWeatherPanelFn();
+    }
+  });
+  
+  // Prevent map click propagation when interacting with sidebar/panel
+  if (sidebar) {
+    sidebar.addEventListener('click', (e) => e.stopPropagation());
+    sidebar.addEventListener('touchstart', (e) => e.stopPropagation());
+  }
+  weatherPanel.addEventListener('click', (e) => e.stopPropagation());
+  
+  // ======================= OPTIONAL: Click on map closes weather? not needed =======================
+  // but we keep clear: clicking outside panel does not close, only cross or esc.
+  
+  // ======================= INIT ALL =======================
+  function init() {
+    initMarkers();          // create markers first
+    buildCameraList();     // build sidebar list with cameraData ready
+    // set default active none, but ensure marker popup open from list works
+    // Also, add a small map click listener to remove highlight? not mandatory
+  }
+  
+  // For safety, wait DOM fully loaded
+  window.addEventListener('DOMContentLoaded', () => {
+    init();
+    // small tweak: if any popup closes, we might remove active but that's fine
+    // Add some style: sidebar scroll & modern effect
+  });
+  
+  // Additional: Force marker popup style cohesion
+  console.log("✅ CCTV Map Pro | ระบบกล้อง & พยากรณ์อากาศ พร้อมใช้งาน");
+  
+  // If map is already loaded, ensure zoom control adjusted
+  // (leaflet zoomControl moved already)
+  
+  // Provide tooltip for weather button
+  const wBtn = document.getElementById('weatherToggleBtn');
+  if (wBtn) wBtn.title = "แสดงพยากรณ์อากาศ 48 ชั่วโมง แบบ Meteogram";
+  
+  // Optional: also ensure that on camera fly, map zooms nicely.
+  // And for better UX: when sidebar collapsed, we can still show count badge? Not needed but sleek.
 </script>
-
 </body>
 </html>
