@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>CCTV Map Pro | กล้อง + พยากรณ์อากาศจริง</title>
+    <title>CCTV Map กระบุรี</title>
 
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -41,20 +41,18 @@
             border-radius: 28px;
             border: 1px solid rgba(64, 224, 208, 0.35);
             box-shadow: 0 15px 35px rgba(0,0,0,0.5);
-            width: 300px;
+            width: 330px;
             max-height: calc(100vh - 120px);
             transition: width 0.35s cubic-bezier(0.25, 0.8, 0.4, 1);
-            overflow: hidden;
+            overflow-y: auto; /* เปิดสกรอลล์บาร์เฉพาะตัว Sidebar รวมหลักป้องกันล้นหน้าจอ */
         }
-        .cctv-sidebar.collapsed {
-            width: 68px;
-        }
+        
+        /* ลบสกรอลล์บาร์ของตัว Sidebar หลักเพื่อให้ดูเนียนตา */
+        .cctv-sidebar::-webkit-scrollbar { width: 0px; background: transparent; }
 
-        /* Expanded State */
         .sidebar-expanded {
             display: flex;
             flex-direction: column;
-            height: 100%;
         }
         .sidebar-header {
             padding: 18px 20px 12px 20px;
@@ -64,135 +62,81 @@
             align-items: center;
         }
         .sidebar-header h3 {
-            font-size: 1.22rem;
+            font-size: 1.1rem;
             font-weight: 600;
             background: linear-gradient(135deg, #c0f0ff, #a0ffcc);
             -webkit-background-clip: text;
             color: transparent;
         }
         .toggle-sidebar-btn {
-            background: rgba(255,255,255,0.12);
-            border: none;
-            width: 36px; height: 36px;
-            border-radius: 50%;
-            color: #c0ffec;
-            font-size: 1.7rem;
-            cursor: pointer;
-            transition: 0.2s;
+            background: rgba(255,255,255,0.12); border: none;
+            width: 36px; height: 36px; border-radius: 50%;
+            color: #c0ffec; font-size: 1.7rem; cursor: pointer; transition: 0.2s;
         }
-        .toggle-sidebar-btn:hover {
-            background: rgba(0, 200, 180, 0.6);
-        }
+        .toggle-sidebar-btn:hover { background: rgba(0, 200, 180, 0.6); }
 
-        /* ส่วนควบคุมเรดาร์ภายใน Sidebar */
         .radar-sidebar-control {
-            padding: 14px 20px;
+            padding: 12px 20px;
             background: rgba(14, 26, 36, 0.6);
             border-bottom: 1px solid rgba(100,220,200,0.2);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
+            display: flex; align-items: center; justify-content: space-between;
         }
-        .radar-sidebar-control span {
-            font-size: 0.88rem;
-            font-weight: 600;
-            color: #3effe0;
-        }
-        .radar-sidebar-control input[type="range"] {
-            cursor: pointer;
-            accent-color: #00d4aa;
-            flex: 1;
-            max-width: 130px;
-        }
+        .radar-sidebar-control span { font-size: 0.85rem; font-weight: 600; color: #3effe0; }
+        .radar-sidebar-control input[type="range"] { cursor: pointer; accent-color: #00d4aa; max-width: 120px; }
 
+        /* ปรับขนาดรายชื่อสถานที่ ไม่ให้มีสกอร์บาร์ย่อยภายใน */
         .camera-list-container {
-            overflow-y: auto;
-            padding: 10px 8px 20px;
-            flex: 1;
+            overflow: visible; 
+            max-height: none;
+            padding: 5px 8px; 
+            border-bottom: 1px solid rgba(100,220,200,0.2);
         }
         .camera-item {
-            background: rgba(20,30,38,0.75);
-            margin: 8px;
-            padding: 13px 14px;
-            border-radius: 20px;
-            cursor: pointer;
-            transition: all 0.25s;
-            display: flex;
-            align-items: center;
-            gap: 12px;
+            background: rgba(20,30,38,0.75); margin: 6px; padding: 10px 12px;
+            border-radius: 16px; cursor: pointer; transition: all 0.25s;
+            display: flex; align-items: center; gap: 10px;
         }
-        .camera-item:hover {
-            background: rgba(40,70,75,0.9);
-            transform: translateX(8px);
-        }
-        .camera-item.active {
-            background: linear-gradient(105deg, #1f4e4b, #0f3835);
-            border-left: 5px solid #3effe0;
-        }
+        .camera-item:hover { background: rgba(40,70,75,0.9); transform: translateX(5px); }
+        .camera-item.active { background: linear-gradient(105deg, #1f4e4b, #0f3835); border-left: 4px solid #3effe0; }
 
-        /* Collapsed State */
-        .sidebar-collapsed-content {
-            display: none;
-            height: 100%;
-            align-items: center;
-            justify-content: center;
-            padding: 20px 10px;
+        /* ==================== โซนอัปโหลดไฟล์น้ำ ==================== */
+        .upload-section {
+            padding: 15px 20px; background: rgba(5, 10, 15, 0.6);
+            display: flex; flex-direction: column; gap: 10px;
         }
-        .cctv-sidebar.collapsed .sidebar-collapsed-content {
-            display: flex;
+        .upload-title { font-size: 0.88rem; font-weight: 600; color: #a2fcd4; }
+        
+        .file-input-label {
+            display: block; background: linear-gradient(135deg, #1a3c38, #0a2422);
+            border: 1px dashed #3effe0; border-radius: 14px; padding: 12px;
+            text-align: center; cursor: pointer; font-size: 0.82rem; font-weight: 600; color: #e0ffff;
         }
-        .cctv-sidebar.collapsed .sidebar-expanded {
-            display: none;
-        }
+        .file-input-label:hover { background: rgba(0, 212, 170, 0.2); box-shadow: 0 0 10px rgba(62,255,224,0.25); }
+        #fileInput { display: none; }
 
-        .expand-trigger {
-            width: 58px;
-            height: 58px;
-            background: rgba(20, 40, 45, 0.95);
-            border: 3px solid #2acfba;
-            color: #8effe0;
-            font-size: 34px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.5);
-            transition: all 0.3s;
-        }
-        .expand-trigger:hover {
-            transform: scale(1.12);
-            background: #1b6b62;
-        }
+        .layer-list { overflow: visible; max-height: none; display: flex; flex-direction: column; gap: 6px; padding-top: 4px; }
+        .layer-item { background: rgba(25, 35, 45, 0.8); border-radius: 10px; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem; }
+        .layer-info { display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; flex: 1; }
+        .layer-color-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        .layer-actions { display: flex; gap: 8px; margin-left: 6px; }
+        .layer-btn { background: none; border: none; color: #ccc; cursor: pointer; font-size: 0.9rem; }
+        .layer-btn:hover { color: white; transform: scale(1.1); }
+        .layer-btn.delete:hover { color: #ff6b6b; }
 
-        /* Popup */
-        .leaflet-popup-content-wrapper {
-            background: #11181fdd;
-            backdrop-filter: blur(14px);
-            border: 1px solid #2affcf;
-            border-radius: 24px;
-            color: white;
-        }
-        .open-cctv-btn {
-            display: block;
-            margin: 14px auto;
-            padding: 14px 32px;
-            background: linear-gradient(90deg, #00d4aa, #00b894);
-            color: white;
-            font-weight: 700;
-            border-radius: 50px;
-            text-decoration: none;
-            box-shadow: 0 8px 25px rgba(0,212,170,0.5);
-        }
-        .weather-real {
-            margin: 12px 0;
-            padding: 12px;
-            background: rgba(0,0,0,0.45);
-            border-radius: 16px;
-            font-size: 0.93rem;
-            text-align: left;
-        }
+        /* Collapse state */
+        .sidebar-collapsed-content { display: none; height: 100%; align-items: center; justify-content: center; padding: 20px 10px; }
+        .cctv-sidebar.collapsed { width: 68px; overflow: hidden; }
+        .cctv-sidebar.collapsed .sidebar-collapsed-content { display: flex; }
+        .cctv-sidebar.collapsed .sidebar-expanded { display: none; }
+        .expand-trigger { width: 58px; height: 58px; background: rgba(20, 40, 45, 0.95); border: 3px solid #2acfba; color: #8effe0; font-size: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+
+        /* Leaflet Overwrites */
+        .leaflet-popup-content-wrapper { background: #11181fdd; backdrop-filter: blur(14px); border: 1px solid #2affcf; border-radius: 24px; color: white; }
+        .open-cctv-btn { display: block; margin: 14px auto; padding: 14px 32px; background: linear-gradient(90deg, #00d4aa, #00b894); color: white; font-weight: 700; border-radius: 50px; text-decoration: none; text-align: center; }
+        .weather-real { margin: 12px 0; padding: 12px; background: rgba(0,0,0,0.45); border-radius: 16px; font-size: 0.93rem; }
+        
+        /* ปรับสไตล์ตัวสลับแผนที่มุมขวาบนให้เข้ากับธีมมืด */
+        .leaflet-control-layers { background: rgba(12, 20, 28, 0.9) !important; color: white !important; border: 1px solid rgba(64, 224, 208, 0.4) !important; border-radius: 16px !important; padding: 10px !important; }
     </style>
 </head>
 <body>
@@ -205,16 +149,23 @@
 <div id="cctvSidebar" class="cctv-sidebar">
     <div class="sidebar-expanded">
         <div class="sidebar-header">
-            <h3>📹 กล้อง + ระดับน้ำ</h3>
+            <h3>📹 ระบบวิเคราะห์ร่องน้ำเปิด</h3>
             <button id="collapseSidebarBtn" class="toggle-sidebar-btn">◀</button>
         </div>
         
         <div class="radar-sidebar-control">
-            <span>📡 ปรับความชัดเรดาร์</span>
-            <input type="range" id="radarOpacity" min="0" max="1" step="0.1" value="0.7">
+            <span>📡 ระดับความเข้มเรดาร์ฝน</span>
+            <input type="range" id="radarOpacity" min="0" max="1" step="0.1" value="0.6">
         </div>
 
         <div id="cameraListContainer" class="camera-list-container"></div>
+
+        <div class="upload-section">
+            <div class="upload-title">🌊 นำเข้าไฟล์ (.kml, .gpx, .geojson)</div>
+            <label for="fileInput" class="file-input-label">📁 คลิกเพื่อโหลดพิกัดน้ำไหล</label>
+            <input type="file" id="fileInput" accept=".kml,.gpx,.geojson" multiple>
+            <div id="layerList" class="layer-list"></div>
+        </div>
     </div>
     
     <div class="sidebar-collapsed-content">
@@ -225,13 +176,11 @@
 <div id="map"></div>
 
 <script>
-// โหลด Leaflet
 async function loadLeaflet() {
     return new Promise((resolve, reject) => {
         const link = document.createElement('link');
         link.rel = 'stylesheet'; link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
         document.head.appendChild(link);
-
         const script = document.createElement('script');
         script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
         script.onload = resolve; script.onerror = reject;
@@ -242,8 +191,8 @@ async function loadLeaflet() {
 let map;
 let cameraData = [];
 let radarOverlay;
+let importedLayers = {};
 
-// เวลาไทย
 function updateThaiTime() {
     const opt = { timeZone: "Asia/Bangkok", year:"numeric", month:"long", day:"numeric", weekday:"long", hour:"2-digit", minute:"2-digit", second:"2-digit" };
     document.getElementById("thaiTime").innerText = new Intl.DateTimeFormat("th-TH", opt).format(new Date());
@@ -251,7 +200,6 @@ function updateThaiTime() {
 setInterval(updateThaiTime, 1000);
 updateThaiTime();
 
-// กล้อง
 const camerasRaw = [
     { name: "RNG01 - บ้านปากจั่น",     lat: 10.533170, lon: 98.823570, station: "RNG01" },
     { name: "RNG02 - บ้านปลายคลอง",   lat: 10.403240, lon: 98.777100, station: "RNG02" },
@@ -260,56 +208,21 @@ const camerasRaw = [
     { name: "RNG05 - สะพานลำเลียง",   lat: 10.311060, lon: 98.795300, station: "RNG05" }
 ];
 
-// ดึงข้อมูลอากาศจริง
 async function getWeather(lat, lon) {
     try {
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m&timezone=Asia/Bangkok`;
-        const res = await fetch(url);
-        const data = await res.json();
-        const c = data.current;
-
-        let condition = "☀️ ท้องฟ้าแจ่มใส";
-        if (c.weather_code >= 51) condition = "🌧️ ฝนตก";
-        if (c.weather_code >= 45) condition = "🌫️ หมอก";
-
-        const warning = c.precipitation > 5 ? '<span style="color:#ff6b6b;">⚠️ เสี่ยงฝนหนัก</span>' : '';
-
-        return `
-            <div class="weather-real">
-                🌡️ <strong>${c.temperature_2m}°C</strong> (รู้สึกเหมือน ${c.apparent_temperature}°C)<br>
-                💧 ความชื้น <strong>${c.relative_humidity_2m}%</strong><br>
-                🌧️ ฝน <strong>${c.precipitation} มม.</strong><br>
-                💨 ลม <strong>${c.wind_speed_10m} กม./ชม.</strong><br>
-                ${condition} ${warning}
-            </div>
-        `;
-    } catch (e) {
-        return `<div class="weather-real">⚠️ ไม่สามารถโหลดข้อมูลอากาศ</div>`;
-    }
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,precipitation,weather_code&timezone=Asia/Bangkok`;
+        const res = await fetch(url); const data = await res.json(); const c = data.current;
+        let cond = c.weather_code >= 51 ? "🌧️ ฝนตก" : "☀️ แจ่มใส";
+        return `<div class="weather-real">🌡️ <b>${c.temperature_2m}°C</b> | 🌧️ ฝน: <b>${c.precipitation} มม.</b><br>${cond}</div>`;
+    } catch { return `<div class="weather-real">⚠️ ไม่มีข้อมูลอากาศ</div>`; }
 }
 
 async function initMarkers() {
-    const cctvIcon = L.icon({
-        iconUrl: 'https://i.ibb.co/1hX5YCQ/cctv-1.png',
-        iconSize: [46, 46], iconAnchor: [23, 46], popupAnchor: [0, -40]
-    });
-
+    const cctvIcon = L.icon({ iconUrl: 'https://i.ibb.co/1hX5YCQ/cctv-1.png', iconSize: [46, 46], iconAnchor: [23, 46], popupAnchor: [0, -40] });
     for (let i = 0; i < camerasRaw.length; i++) {
-        const cam = camerasRaw[i];
-        const weatherHTML = await getWeather(cam.lat, cam.lon);
-        const cctvUrl = `https://cctv.disaster.go.th/stations/${cam.station}`;
-
-        const popupHTML = `
-            <div style="padding:10px 15px; text-align:center;">
-                <div style="font-weight:700; font-size:1.2rem; margin-bottom:10px;">📹 ${cam.name}</div>
-                ${weatherHTML}
-                <a href="${cctvUrl}" target="_blank" class="open-cctv-btn">🔴 เปิดดูภาพสด CCTV</a>
-                <small style="opacity:0.75; margin-top:8px; display:block;">ข้อมูลอากาศจาก Open-Meteo</small>
-            </div>
-        `;
-
-        const marker = L.marker([cam.lat, cam.lon], { icon: cctvIcon }).addTo(map);
-        marker.bindPopup(popupHTML, { maxWidth: 460 });
+        const cam = camerasRaw[i]; const weatherHTML = await getWeather(cam.lat, cam.lon);
+        const popupHTML = `<div style="padding:10px; text-align:center;"><div style="font-weight:700; font-size:1.1rem; margin-bottom:5px;">📹 ${cam.name}</div>${weatherHTML}<a href="https://cctv.disaster.go.th/stations/${cam.station}" target="_blank" class="open-cctv-btn">🔴 เปิดดูภาพสด</a></div>`;
+        const marker = L.marker([cam.lat, cam.lon], { icon: cctvIcon }).addTo(map).bindPopup(popupHTML, { maxWidth: 400 });
         cameraData.push({ id: i, ...cam, marker });
         marker.on('popupopen', () => highlightSidebarItem(i));
     }
@@ -318,21 +231,12 @@ async function initMarkers() {
 function buildCameraList() {
     const container = document.getElementById('cameraListContainer');
     let html = '';
-    cameraData.forEach((cam, i) => {
-        html += `
-            <div class="camera-item" data-idx="${i}">
-                <span style="font-size:28px;">📷</span>
-                <div style="flex:1;">
-                    <div style="font-weight:700;">${cam.name}</div>
-                    <div style="font-size:0.73rem; color:#aacfd9; font-family:monospace;">📍 ${cam.lat.toFixed(5)}, ${cam.lon.toFixed(5)}</div>
-                </div>
-            </div>
-        `;
-    });
+    cameraData.forEach((cam, i) => { html += `<div class="camera-item" data-idx="${i}"><span style="font-size:22px;">📷</span><div style="flex:1;"><div style="font-weight:700; font-size:0.85rem;">${cam.name}</div></div></div>`; });
     container.innerHTML = html;
-
     document.querySelectorAll('.camera-item').forEach(item => {
-        item.addEventListener('click', () => flyToCamera(parseInt(item.dataset.idx)));
+        item.addEventListener('click', () => {
+            const idx = parseInt(item.dataset.idx); map.flyTo([cameraData[idx].lat, cameraData[idx].lon], 15); cameraData[idx].marker.openPopup();
+        });
     });
 }
 
@@ -342,101 +246,165 @@ function highlightSidebarItem(idx) {
     if (item) item.classList.add('active');
 }
 
-function flyToCamera(idx) {
-    if (!cameraData[idx]) return;
-    const cam = cameraData[idx];
-    map.flyTo([cam.lat, cam.lon], 15, { duration: 1.3 });
-    cam.marker.openPopup();
-    highlightSidebarItem(idx);
+function getRandomNeonColor() {
+    const colors = ['#00f0ff', '#3effe0', '#00ff66', '#ffff00', '#ff00ff', '#ff3366', '#ff9900'];
+    return colors[Math.floor(Math.random() * colors.length)];
+}
+
+function setupFileImporter() {
+    document.getElementById('fileInput').addEventListener('change', (e) => {
+        const files = e.target.files;
+        for (let i = 0; i < files.length; i++) { parseFileContent(files[i]); }
+        e.target.value = '';
+    });
+}
+
+function parseFileContent(file) {
+    const reader = new FileReader();
+    const fileId = 'layer_' + Date.now() + '_' + Math.floor(Math.random()*1000);
+    const color = getRandomNeonColor();
+    const ext = file.name.split('.').pop().toLowerCase();
+
+    reader.onload = function(e) {
+        const text = e.target.result;
+        let coordinates = [];
+
+        try {
+            if (ext === 'geojson' || ext === 'json') {
+                coordinates = parseGeoJSON(JSON.parse(text));
+            } else if (ext === 'gpx') {
+                const xml = new DOMParser().parseFromString(text, "text/xml");
+                coordinates = parseGPX(xml);
+            } else if (ext === 'kml') {
+                const xml = new DOMParser().parseFromString(text, "text/xml");
+                coordinates = parseKML(xml);
+            }
+
+            if (coordinates.length === 0) {
+                alert(`⚠️ ไม่พบพิกัดเส้นทางน้ำในไฟล์: ${file.name}`); return;
+            }
+
+            const polyline = L.polyline(coordinates, { color: color, weight: 5, opacity: 0.9, lineJoin: 'round' }).addTo(map);
+            polyline.bindPopup(`<b>🌊 ลำน้ำ:</b> ${file.name}`);
+
+            importedLayers[fileId] = { name: file.name, layer: polyline, color: color, visible: true };
+            map.fitBounds(polyline.getBounds(), { padding: [40, 40] });
+            refreshLayerUI();
+
+        } catch (err) {
+            alert(`❌ อ่านโครงสร้างไฟล์ ${file.name} ล้มเหลว`);
+        }
+    };
+    reader.readAsText(file);
+}
+
+function parseKML(xml) {
+    let pts = [];
+    const coordElements = xml.getElementsByTagName("coordinates");
+    for (let i = 0; i < coordElements.length; i++) {
+        const rawStr = coordElements[i].textContent.trim();
+        const chunks = rawStr.split(/\s+/);
+        chunks.forEach(chunk => {
+            const parts = chunk.split(',');
+            if (parts.length >= 2) {
+                const lon = parseFloat(parts[0]); const lat = parseFloat(parts[1]);
+                if (!isNaN(lat) && !isNaN(lon)) pts.push([lat, lon]);
+            }
+        });
+    }
+    return pts;
+}
+
+function parseGeoJSON(json) {
+    let pts = [];
+    const features = json.features || (json.type === "Feature" ? [json] : []);
+    features.forEach(f => {
+        if (f.geometry && (f.geometry.type === "LineString" || f.geometry.type === "MultiLineString")) {
+            const lines = f.geometry.type === "LineString" ? [f.geometry.coordinates] : f.geometry.coordinates;
+            lines.forEach(line => line.forEach(c => { if(c.length >= 2) pts.push([c[1], c[0]]); }));
+        }
+    });
+    return pts;
+}
+
+function parseGPX(xml) {
+    let pts = []; const trkpts = xml.getElementsByTagName("trkpt");
+    for (let i = 0; i < trkpts.length; i++) {
+        const lat = parseFloat(trkpts[i].getAttribute("lat")); const lon = parseFloat(trkpts[i].getAttribute("lon"));
+        if (!isNaN(lat) && !isNaN(lon)) pts.push([lat, lon]);
+    }
+    return pts;
+}
+
+function refreshLayerUI() {
+    const container = document.getElementById('layerList'); container.innerHTML = '';
+    Object.keys(importedLayers).forEach(id => {
+        const item = importedLayers[id]; const div = document.createElement('div'); div.className = 'layer-item';
+        div.innerHTML = `<div class="layer-info"><div class="layer-color-dot" style="background:${item.color};"></div><span>${item.name}</span></div><div class="layer-actions"><button class="layer-btn toggle-vis" data-id="${id}">${item.visible?'👁️':'🙈'}</button><button class="layer-btn delete" data-id="${id}">🗑️</button></div>`;
+        container.appendChild(div);
+    });
+    document.querySelectorAll('.toggle-vis').forEach(b => b.addEventListener('click', () => {
+        const id = b.dataset.id; const item = importedLayers[id];
+        if (item.visible) { map.removeLayer(item.layer); item.visible = false; } else { map.addLayer(item.layer); item.visible = true; }
+        refreshLayerUI();
+    }));
+    document.querySelectorAll('.layer-btn.delete').forEach(b => b.addEventListener('click', () => {
+        const id = b.dataset.id; map.removeLayer(importedLayers[id].layer); delete importedLayers[id]; refreshLayerUI();
+    }));
 }
 
 function setupSidebar() {
-    const sidebar = document.getElementById('cctvSidebar');
-    document.getElementById('collapseSidebarBtn').addEventListener('click', () => sidebar.classList.add('collapsed'));
-    document.getElementById('expandSidebarBtn').addEventListener('click', () => sidebar.classList.remove('collapsed'));
+    document.getElementById('collapseSidebarBtn').addEventListener('click', () => document.getElementById('cctvSidebar').classList.add('collapsed'));
+    document.getElementById('expandSidebarBtn').addEventListener('click', () => document.getElementById('cctvSidebar').classList.remove('collapsed'));
 }
 
+// นำฟังก์ชันแผงควบคุมสภาพอากาศและดึงกราฟพยากรณ์คืนกลับมา
 function setupWeatherPanel() {
     const panel = document.createElement('div');
     panel.id = 'weatherPanel';
-    panel.style.cssText = `display:none; position:absolute; top:100px; left:50%; transform:translateX(-50%); width:90%; max-width:920px; background:rgba(12,20,30,0.96); backdrop-filter:blur(20px); border-radius:32px; padding:22px; z-index:11000;`;
+    panel.style.cssText = `display:none; position:absolute; top:100px; left:50%; transform:translateX(-50%); width:90%; max-width:920px; background:rgba(12,20,30,0.96); backdrop-filter:blur(20px); border-radius:32px; padding:22px; z-index:11000; box-shadow: 0 20px 50px rgba(0,0,0,0.6); border: 1px solid rgba(0,212,170,0.3);`;
     panel.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
-            <h3>🌦️ พยากรณ์อากาศ 48 ชั่วโมง อ.กระบุรี</h3>
+            <h3 style="background:linear-gradient(135deg, #fff, #a0ffcc);-webkit-background-clip:text;color:transparent;">🌦️ พยากรณ์อากาศ 48 ชั่วโมง อ.กระบุรี</h3>
             <button id="closeWeather" style="background:none;border:none;color:#ff8888;font-size:1.8rem;cursor:pointer;">✕</button>
         </div>
-        <div style="background:#051016;border-radius:20px;padding:10px;text-align:center;">
+        <div style="background:#051016;border-radius:20px;padding:10px;text-align:center;box-shadow:inset 0 0 20px rgba(0,0,0,0.6);">
             <img src="https://www.yr.no/en/content/2-1152625/meteogram.svg?mode=dark&t=${Date.now()}" style="max-width:100%;border-radius:16px;" alt="Meteogram">
         </div>
     `;
     document.body.appendChild(panel);
-
     document.getElementById('weatherToggleBtn').addEventListener('click', () => {
         panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
     });
     document.getElementById('closeWeather').addEventListener('click', () => panel.style.display = 'none');
 }
 
-function setupRadarOpacityControl() {
-    const slider = document.getElementById('radarOpacity');
-    slider.addEventListener('input', (e) => {
-        const opacityValue = parseFloat(e.target.value);
-        if (radarOverlay) {
-            radarOverlay.setOpacity(opacityValue);
-        }
-    });
-}
-
-// เริ่มต้นแอปพลิเคชัน
 async function initApp() {
     await loadLeaflet();
-
-    // 1. Base Layers
-    const googleSatellite = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
-        subdomains: ['mt0','mt1','mt2','mt3'], maxZoom: 20,
-        attribution: 'Map data ©2026 Google'
-    });
-
-    const openTopoMap = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-        maxZoom: 17,
-        attribution: 'Map data: © OpenStreetMap contributors, SRTM | Map style: © OpenTopoMap (CC-BY-SA)'
-    });
-
-    map = L.map('map', {
-        center: [10.403240, 98.777100],
-        zoom: 12,
-        layers: [googleSatellite]
-    });
-
-    const baseMaps = {
-        "Google Satellite": googleSatellite,
-        "OpenTopoMap (ภูมิประเทศ)": openTopoMap
-    };
     
-    // คอนโทรลสลับ Layer แผนที่อยู่ที่เดิม (มุมขวาบน) คราวนี้จะไม่ถูกบังแล้วครับ
-    L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
+    // ชนิดแผนที่หลักที่ดึงกลับมาให้เลือกสลับ
+    const googleSatellite = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { subdomains: ['mt0','mt1','mt2','mt3'], maxZoom: 20, attribution: '© Google' });
+    const googleMaps = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { subdomains: ['mt0','mt1','mt2','mt3'], maxZoom: 20, attribution: '© Google' });
+
+    map = L.map('map', { center: [10.403240, 98.777100], zoom: 12, layers: [googleSatellite] });
     map.zoomControl.setPosition('bottomright');
 
-    // 2. Image Overlay เรดาร์ตำบลระนอง
-    const radarUrl = 'https://semet.uk/loop/RNGLoop.gif';
-    const radarBounds = [[8.988744, 97.423977], [11.240715, 99.618184]];
-    
-    radarOverlay = L.imageOverlay(radarUrl, radarBounds, {
-        opacity: 0.7,
-        interactive: false
-    }).addTo(map);
+    // === นำตัวเลือกชนิดแผนที่มุมขวาบนกลับมา ===
+    const baseMaps = {
+        "🛰️ แผนที่ดาวเทียม": googleSatellite,
+        "🗺️ แผนที่ถนน/ไฮบริด": googleMaps
+    };
+    L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
 
-    setupRadarOpacityControl();
+    const radar = L.imageOverlay('https://semet.uk/loop/RNGLoop.gif', [[8.988744, 97.423977], [11.240715, 99.618184]], { opacity: 0.6, interactive: false }).addTo(map);
+    document.getElementById('radarOpacity').addEventListener('input', (e) => radar.setOpacity(parseFloat(e.target.value)));
 
-    // โหลดส่วนประกอบอื่น ๆ
-    await initMarkers();
-    buildCameraList();
-    setupSidebar();
-    setupWeatherPanel();
-
-    console.log("✅ ย้ายแถบควบคุมเรดาร์เข้าไปใน Sidebar และแก้ปัญหาการบัง Layer แผนที่แล้ว!");
+    await initMarkers(); 
+    buildCameraList(); 
+    setupSidebar(); 
+    setupWeatherPanel(); // เปิดการใช้งานแผงอากาศตัวเดิม
+    setupFileImporter();
 }
-
 window.addEventListener('DOMContentLoaded', initApp);
 </script>
 </body>
